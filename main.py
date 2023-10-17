@@ -32,7 +32,7 @@ class robot():
     def get_proctype(self) -> str:
         return f"""
 proctype {self.name}() {{
-    int index = 3 * {self.name}_y + {self.name}_x;
+    int index = m * {self.name}_y + {self.name}_x;
     if :: ({self.name}_loaded == false) -> {{
         if :: ({self.name}_moves[index] == -1) -> {{
             if
@@ -42,10 +42,10 @@ proctype {self.name}() {{
             :: ({self.name}_x <= m-2 && {self.name}_moves[index+1] != 0) -> {{
                 {self.name}_moves[index] = 2;
             }}
-            :: ({self.name}_y >= 1 && {self.name}_moves[index-3] != 3) -> {{
+            :: ({self.name}_y >= 1 && {self.name}_moves[index-m] != 3) -> {{
                 {self.name}_moves[index] = 1;
             }}
-            :: ({self.name}_y <= n-2 && {self.name}_moves[index+3] != 1) -> {{
+            :: ({self.name}_y <= n-2 && {self.name}_moves[index+m] != 1) -> {{
                 {self.name}_moves[index] = 3;
             }}
             fi
@@ -64,10 +64,10 @@ proctype {self.name}() {{
             :: ({self.name}_x <= m-2 &&  {self.name}_moves_loaded[index+1] != 0) -> {{
                 {self.name}_moves_loaded[index] = 2;
             }}
-            :: ({self.name}_y >= 1 &&  {self.name}_moves_loaded[index-3] != 3) -> {{
+            :: ({self.name}_y >= 1 &&  {self.name}_moves_loaded[index-m] != 3) -> {{
                 {self.name}_moves_loaded[index] = 1;
             }}
-            :: ({self.name}_y <= n-2 &&  {self.name}_moves_loaded[index+3] != 1) -> {{
+            :: ({self.name}_y <= n-2 &&  {self.name}_moves_loaded[index+m] != 1) -> {{
                 {self.name}_moves_loaded[index] = 3;
             }}
             fi

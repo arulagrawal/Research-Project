@@ -1,5 +1,5 @@
-#define m 3
-#define n 3
+#define m 4
+#define n 4
 
 chan a_move = [0] of {int};
 chan b_move = [0] of {int};
@@ -33,10 +33,10 @@ int b_score = 0;
 proctype a() {
     int index = 3 * a_y + a_x;
     if :: (a_loaded == false) -> {
-        printf("a is not loaded\n")
+        // printf("a is not loaded\n")
         // see if move is recorded
         if :: (a_moves[index] == -1) -> {
-            printf("move is not recorded\n")
+            // printf("move is not recorded\n")
             // move is not recorded
             // make a valid move, and record it
             if
@@ -65,10 +65,10 @@ proctype a() {
         fi
     }
     :: else -> {
-        printf("a is loaded\n")
+        // printf("a is loaded\n")
         // see if move is recorded
         if :: (a_moves_loaded[index] == -1) -> {
-            printf("move is not recorded\n")
+            // printf("move is not recorded\n")
             // move is not recorded
             // make a valid move, and record it
             if
@@ -102,10 +102,10 @@ proctype a() {
 proctype b() {
     int index = 3 * b_y + b_x;
     if :: (b_loaded == false) -> {
-        printf("b is not loaded\n")
+        // printf("b is not loaded\n")
         // see if move is recorded
         if :: (b_moves[index] == -1) -> {
-            printf("move is not recorded\n")
+            // printf("move is not recorded\n")
             // move is not recorded
             // make b vblid move, bnd record it
             if
@@ -134,10 +134,10 @@ proctype b() {
         fi
     }
     :: else -> {
-        printf("b is loaded\n")
+        // printf("b is loaded\n")
         // see if move is recorded
         if :: (b_moves_loaded[index] == -1) -> {
-            printf("move is not recorded\n")
+            // printf("move is not recorded\n")
             // move is not recorded
             // make b valid move, and record it
             if
@@ -180,7 +180,7 @@ init {
     int move = -1;
     atomic {
         for(i:0.. 50) {
-            printf("a_x: %d, a_y: %d, a_loaded: %d\n", a_x, a_y, a_loaded, a_score);
+            // printf("a_x: %d, a_y: %d, a_loaded: %d\n", a_x, a_y, a_loaded, a_score);
 
             run a();
             a_move?move;
@@ -203,12 +203,12 @@ init {
                 a_score = a_score + 1;
             } :: else -> skip;
             fi
-            printf("a_x: %d, a_y: %d, a_loaded: %d, a_score: %d\n\n", a_x, a_y, a_loaded, a_score);
+            // printf("a_x: %d, a_y: %d, a_loaded: %d, a_score: %d\n\n", a_x, a_y, a_loaded, a_score);
 
             // ---------------------------------------------------------------
             // b
             
-            printf("b_x: %d, b_y: %d, b_loaded: %d\n", b_x, b_y, b_loaded, b_score);
+            // printf("b_x: %d, b_y: %d, b_loaded: %d\n", b_x, b_y, b_loaded, b_score);
 
             run b();
             b_move?move;
@@ -231,13 +231,13 @@ init {
                 b_score = b_score + 1;
             } :: else -> skip;
             fi
-            printf("b_x: %d, b_y: %d, b_loaded: %d, b_score: %d\n\n", b_x, b_y, b_loaded, b_score);
+            // printf("b_x: %d, b_y: %d, b_loaded: %d, b_score: %d\n\n", b_x, b_y, b_loaded, b_score);
 
         }
     }
 }
 
-ltl always_crash {
+ltl goal {
     (<> (a_x == b_x && a_y == b_y)) 
     || ([] (a_score <= 0 || b_score <= 0))
 }
