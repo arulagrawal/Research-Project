@@ -3,3 +3,4 @@
 pan
 pan.*
 .env/
+__pycache__/
