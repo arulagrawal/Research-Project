@@ -93,7 +93,7 @@ class Sprite:
 
     def draw_next(self, canvas):
         if self.draw_id is None:
-            print("drawing initial")
+            # print("drawing initial")
             self.old_x, self.old_y = self.x, self.y
             self.draw_id = draw_robot(
                 canvas, self.x, self.y, self.colour, self.size, self.cell_size

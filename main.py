@@ -131,6 +131,8 @@ class game:
         self.m, self.n = dimensions
         self.num_robots = num_robots
         self.robots = []
+        self.target_total_score = 0
+
 
     def add_robot(self, robot: robot) -> None:
         self.robots.append(robot)
@@ -205,16 +207,106 @@ proctype env() {{
             ]
             return " || ".join(collision_boolean_thing)
 
-        def get_score_ltl(names) -> str:  # TODO make score target a parameter
-            return " || ".join([f"({name}_score <= 0)" for name in names])
+        # def get_score_ltl(names) -> str:  # TODO make score target a parameter
+        #     return " || ".join([f"({name}_score <= 0)" for name in names])
+        def get_score_ltl(names) -> str:
+            score_sum = " + ".join(f"{name}_score" for name in names)
+            return f"({score_sum} <= {self.target_total_score})"
+
 
         result += "ltl goal { \n"
         result += f"(<> ({get_collision_ltl(combinations(names, 2))}))\n"
         result += f"|| ([] ({get_score_ltl(names)}))"
-        result += "}"
+        result += "\n}"
 
         return result
+    
+    def run(self):
+        with open("game.pml", "w") as f:
+            f.write(self.get_promela())
 
+        subprocess.run(
+            ["spin", "-a", "game.pml"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        )
+        subprocess.run(
+            [
+                "gcc",
+                "-DMEMLIM=8192",
+                "-O3",
+                "-DNOFAIR",
+                "-DNOCOMP",
+                "-DXUSAFE",
+                "-DVECTORSZ=4096",
+                "-DBITSTATE",
+                "-w",
+                "-o",
+                "pan",
+                "pan.c",
+            ],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        subprocess.run(
+            ["./pan", "-m10000", "-a", "-N", "-G4", "goal"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=2 * 60
+        )
+        result = subprocess.run(
+            [
+                "spin",
+                "-X",
+                "-n123",
+                "-l",
+                "-g",
+                "-k",
+                "game.pml.trail",
+                "-u10000",
+                "game.pml",
+            ],
+            capture_output=True,
+            text=True,
+            # timeout=1 * 60
+        )
+        output = result.stdout
+        strategies = {r.name: {} for r in self.robots}
+        for robot in strategies.keys():
+            strategies[robot]["moves"] = {}
+            strategies[robot]["moves_loaded"] = {}
+            strategies[robot]["score"] = 0
+
+        move_regex = r"(\s*[a-zA-Z0-9.-]+)_(\w+)\[(\d+)\] = (-?\d+)"
+        for line in output.splitlines():
+            match = re.match(move_regex, line.strip())
+            if match:
+                robot, move_type, index, move = match.groups()
+                strategies[robot][move_type][int(index)] = int(move)
+            else:
+                match = re.match(r"([a-zA-Z0-9.-]+)_score = (\d+)", line.strip())
+                if match:
+                    robot, score = match.groups()
+                    strategies[robot]["score"] = int(score)
+
+        subprocess.run(["rm", "-f", "pan*", "*.trail", "*.tmp"])
+        return strategies
+    
+    def iterative_search(self):
+        total_score = 0
+        strategy_profile = None
+        try:
+            for _ in range(10):
+                self.target_total_score = total_score # dont need plus one because we search for <=
+                strategy_profile = self.run()
+                total_score = sum([strategy_profile[r]["score"] for r in strategy_profile.keys()])
+                print(f"Total score improved to: {total_score}")
+                print("Individual scores:")
+                for robot in self.robots:
+                    print(f"{robot.name}: {strategy_profile[robot.name]['score']}")
+        except subprocess.TimeoutExpired:
+            print("Time limit exceeded")
+            return strategy_profile
+
+        return strategy_profile
 
 def get_scenario(file_name: str) -> game:
     scenario: game = None
@@ -234,84 +326,9 @@ def get_scenario(file_name: str) -> game:
 
 
 def main():
-    game = get_scenario("scenarios/4x4.txt")
-    strategy_profile = run_game(game)
+    game = get_scenario("scenarios/5x5.txt")
+    strategy_profile = game.iterative_search()
     simulate_game(game, strategy_profile)
-
-
-def run_game(game: game):
-    with open("game.pml", "w") as f:
-        f.write(game.get_promela())
-
-    subprocess.run(
-        ["spin", "-a", "game.pml"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-    )
-    subprocess.run(
-        [
-            "gcc",
-            "-DMEMLIM=8192",
-            "-O3",
-            "-DNOFAIR",
-            "-DNOCOMP",
-            "-DXUSAFE",
-            "-DVECTORSZ=4096",
-            "-DBITSTATE",
-            "-w",
-            "-o",
-            "pan",
-            "pan.c",
-        ],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-    subprocess.run(
-        ["./pan", "-m10000", "-a", "-N", "-G4", "goal"],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-    result = subprocess.run(
-        [
-            "spin",
-            "-X",
-            "-n123",
-            "-l",
-            "-g",
-            "-k",
-            "game.pml.trail",
-            "-u10000",
-            "game.pml",
-        ],
-        capture_output=True,
-        text=True,
-        timeout=5 * 60
-    )
-    output = result.stdout
-    # print("output is " + output)
-    strategies = {r.name: {} for r in game.robots}
-    for robot in strategies.keys():
-        strategies[robot]["moves"] = {}
-        strategies[robot]["moves_loaded"] = {}
-        strategies[robot]["score"] = 0
-
-    move_regex = r"(\s*[a-zA-Z0-9.-]+)_(\w+)\[(\d+)\] = (-?\d+)"
-    for line in output.splitlines():
-        # print(line)
-        match = re.match(move_regex, line.strip())
-        if match:
-            robot, move_type, index, move = match.groups()
-            strategies[robot][move_type][int(index)] = int(move)
-        else:
-            match = re.match(r"([a-zA-Z0-9.-]+)_score = (\d+)", line.strip())
-            if match:
-                robot, score = match.groups()
-                strategies[robot]["score"] = int(score)
-
-
-
-    pprint(strategies)
-
-    subprocess.run(["rm", "-f", "pan*", "*.trail", "*.tmp"])
-    return strategies
 
 if __name__ == "__main__":
     main()
