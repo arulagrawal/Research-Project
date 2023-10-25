@@ -1,7 +1,18 @@
 from itertools import combinations
+import re
+import subprocess
+from pprint import pprint
 
-class robot():
-    def __init__(self, name: str, start_pos: tuple[int, int], load_pos: tuple[int, int], exit_pos: tuple[int, int]) -> None:
+from gui import simulate_game
+
+class robot:
+    def __init__(
+        self,
+        name: str,
+        start_pos: tuple[int, int],
+        load_pos: tuple[int, int],
+        exit_pos: tuple[int, int],
+    ) -> None:
         self.name = name
         self.start_pos = start_pos
         self.load_pos = load_pos
@@ -10,7 +21,8 @@ class robot():
     def get_variables(self) -> str:
         result = ""
 
-        result += f"chan {self.name}_move = [0] of {{int}};\n"
+        result += f"chan {self.name}_chan = [0] of {{int}};\n"
+        result += f"chan {self.name}_can = [0] of {{bool}};\n"
         result += f"int {self.name}_moves[m*n];\n"
         result += f"int {self.name}_moves_loaded[m*n];\n"
 
@@ -27,87 +39,94 @@ class robot():
 
         result += f"int {self.name}_score = 0;\n"
         return result
-    
-    
+
     def get_proctype(self) -> str:
         return f"""
 proctype {self.name}() {{
-    int index = m * {self.name}_y + {self.name}_x;
-    if :: ({self.name}_loaded == false) -> {{
-        if :: ({self.name}_moves[index] == -1) -> {{
-            if
-            :: ({self.name}_x >= 1 && {self.name}_moves[index-1] != 2) -> {{
-                {self.name}_moves[index] = 0;
+    atomic {{
+        int i = 0;
+        for(i:0.. rounds) {{
+            {self.name}_can?true;
+            int index = m * {self.name}_y + {self.name}_x;
+            if :: ({self.name}_loaded == false) -> {{
+                if :: ({self.name}_moves[index] == -1) -> {{
+                    if
+                    :: ({self.name}_x >= 1 && {self.name}_moves[index-1] != 2) -> {{
+                        {self.name}_moves[index] = 0;
+                    }}
+                    :: ({self.name}_x <= m-2 && {self.name}_moves[index+1] != 0) -> {{
+                        {self.name}_moves[index] = 2;
+                    }}
+                    :: ({self.name}_y >= 1 && {self.name}_moves[index-m] != 3) -> {{
+                        {self.name}_moves[index] = 1;
+                    }}
+                    :: ({self.name}_y <= n-2 && {self.name}_moves[index+m] != 1) -> {{
+                        {self.name}_moves[index] = 3;
+                    }}
+                    fi
+                    {self.name}_chan!{self.name}_moves[index];
+                }} :: else -> {{
+                    {self.name}_chan!{self.name}_moves[index];
+                }}
+                fi
             }}
-            :: ({self.name}_x <= m-2 && {self.name}_moves[index+1] != 0) -> {{
-                {self.name}_moves[index] = 2;
-            }}
-            :: ({self.name}_y >= 1 && {self.name}_moves[index-m] != 3) -> {{
-                {self.name}_moves[index] = 1;
-            }}
-            :: ({self.name}_y <= n-2 && {self.name}_moves[index+m] != 1) -> {{
-                {self.name}_moves[index] = 3;
+            :: else -> {{
+                if :: ({self.name}_moves_loaded[index] == -1) -> {{
+                    if
+                    :: ({self.name}_x >= 1 && {self.name}_moves_loaded[index-1] != 2) -> {{
+                        {self.name}_moves_loaded[index] = 0;
+                    }}
+                    :: ({self.name}_x <= m-2 &&  {self.name}_moves_loaded[index+1] != 0) -> {{
+                        {self.name}_moves_loaded[index] = 2;
+                    }}
+                    :: ({self.name}_y >= 1 &&  {self.name}_moves_loaded[index-m] != 3) -> {{
+                        {self.name}_moves_loaded[index] = 1;
+                    }}
+                    :: ({self.name}_y <= n-2 &&  {self.name}_moves_loaded[index+m] != 1) -> {{
+                        {self.name}_moves_loaded[index] = 3;
+                    }}
+                    fi
+                    {self.name}_chan!{self.name}_moves_loaded[index];
+                }} :: else -> {{
+                    {self.name}_chan!{self.name}_moves_loaded[index];
+                }}
+                fi
             }}
             fi
-            {self.name}_move!{self.name}_moves[index];
-        }} :: else -> {{
-            {self.name}_move!{self.name}_moves[index];
         }}
-        fi
     }}
-    :: else -> {{
-        if :: ({self.name}_moves_loaded[index] == -1) -> {{
-            if
-            :: ({self.name}_x >= 1 && {self.name}_moves_loaded[index-1] != 2) -> {{
-                {self.name}_moves_loaded[index] = 0;
-            }}
-            :: ({self.name}_x <= m-2 &&  {self.name}_moves_loaded[index+1] != 0) -> {{
-                {self.name}_moves_loaded[index] = 2;
-            }}
-            :: ({self.name}_y >= 1 &&  {self.name}_moves_loaded[index-m] != 3) -> {{
-                {self.name}_moves_loaded[index] = 1;
-            }}
-            :: ({self.name}_y <= n-2 &&  {self.name}_moves_loaded[index+m] != 1) -> {{
-                {self.name}_moves_loaded[index] = 3;
-            }}
-            fi
-            {self.name}_move!{self.name}_moves_loaded[index];
-        }} :: else -> {{
-            {self.name}_move!{self.name}_moves_loaded[index];
-        }}
-        fi
-    }}
-    fi
 }}
 """
-    
+
     def get_init(self) -> str:
         return f"""
                 run {self.name}();
-                {self.name}_move?move;
+        """
 
-                if :: (move == 0) -> {{
-                    {self.name}_x = {self.name}_x - 1;
-                }} :: (move == 1) -> {{
-                    {self.name}_y = {self.name}_y - 1;
-                }} :: (move == 2) -> {{
-                    {self.name}_x = {self.name}_x + 1;
-                }} :: (move == 3) -> {{
-                    {self.name}_y = {self.name}_y + 1;
-                }}
-                fi
+    def get_env(self) -> str:
+        return f"""
+        if :: ({self.name}_move == 0) -> {{
+            {self.name}_x = {self.name}_x - 1;
+        }} :: ({self.name}_move == 1) -> {{
+            {self.name}_y = {self.name}_y - 1;
+        }} :: ({self.name}_move == 2) -> {{
+            {self.name}_x = {self.name}_x + 1;
+        }} :: ({self.name}_move == 3) -> {{
+            {self.name}_y = {self.name}_y + 1;
+        }}
+        fi
 
-                if :: ({self.name}_loaded == false && {self.name}_x == {self.name}_load_x && {self.name}_y == {self.name}_load_y) -> {{
-                    {self.name}_loaded = true;
-                }} :: ({self.name}_loaded == true && {self.name}_x == {self.name}_drop_x && {self.name}_y == {self.name}_drop_y) -> {{
-                    {self.name}_loaded = false;
-                    {self.name}_score = {self.name}_score + 1;
-                }} :: else -> skip;
-                fi
+        if :: ({self.name}_loaded == false && {self.name}_x == {self.name}_load_x && {self.name}_y == {self.name}_load_y) -> {{
+            {self.name}_loaded = true;
+        }} :: ({self.name}_loaded == true && {self.name}_x == {self.name}_drop_x && {self.name}_y == {self.name}_drop_y) -> {{
+            {self.name}_loaded = false;
+            {self.name}_score = {self.name}_score + 1;
+        }} :: else -> skip;
+        fi
         """
 
 
-class game():
+class game:
     def __init__(self, dimensions: tuple[int, int], num_robots: int) -> None:
         self.m, self.n = dimensions
         self.num_robots = num_robots
@@ -120,7 +139,8 @@ class game():
         result = ""
 
         result += f"#define m {self.m}\n"
-        result += f"#define n {self.n}\n\n"
+        result += f"#define n {self.n}\n"
+        result += f"#define rounds 50\n\n"
 
         for robot in self.robots:
             result += robot.get_variables() + "\n"
@@ -128,38 +148,64 @@ class game():
         for robot in self.robots:
             result += robot.get_proctype() + "\n"
 
+        result += self.get_env() + "\n"
+
         result += "init {\n"
-        result += "int move = -1;\n"
         result += "int i = 0;\n"
 
         result += "for(i:0.. m*n-1) {\n"
         for robot in self.robots:
-            result += f"{robot.name}_moves[i] = -1;\n"
-            result += f"{robot.name}_moves_loaded[i] = -1;\n"
+            result += f"\t{robot.name}_moves[i] = -1;\n"
+            result += f"\t{robot.name}_moves_loaded[i] = -1;\n"
         result += "}"
 
-        result += "atomic {\n"
-
-        result += "for(i:0.. 50) {\n"
         for robot in self.robots:
             result += robot.get_init() + "\n"
-        result += "}"
 
-        result += "}"
+        result += "run env()\n"
         result += "}\n"
 
         result += self.get_ltl() + "\n"
         return result
-    
+
+    def get_env(self) -> str:
+        return f"""
+proctype env() {{
+    atomic {{
+        int i = 0;
+        for (i:0.. rounds) {{
+            {self.get_env_inner()}
+        }}
+    }}
+}}
+        """
+
+    def get_env_inner(self) -> str:
+        result = ""
+        for robot in self.robots:
+            result += f"int {robot.name}_move = -1\n"
+
+        for robot in self.robots:
+            result += f"{robot.name}_can!true;\n"
+
+        for robot in self.robots:
+            result += f"{robot.name}_chan?{robot.name}_move;\n"
+
+        for robot in self.robots:
+            result += robot.get_env() + "\n"
+        return result
+
     def get_ltl(self) -> str:
         result = ""
         names = [robot.name for robot in self.robots]
-        
+
         def get_collision_ltl(combs) -> str:
-            collision_boolean_thing = [f"({x}_x == {y}_x && {x}_y == {y}_y)" for x, y in combinations(names, 2)]
+            collision_boolean_thing = [
+                f"({x}_x == {y}_x && {x}_y == {y}_y)" for x, y in combs
+            ]
             return " || ".join(collision_boolean_thing)
-        
-        def get_score_ltl(names) -> str: #TODO make score target a parameter
+
+        def get_score_ltl(names) -> str:  # TODO make score target a parameter
             return " || ".join([f"({name}_score <= 0)" for name in names])
 
         result += "ltl goal { \n"
@@ -187,12 +233,85 @@ def get_scenario(file_name: str) -> game:
     return scenario
 
 
-
 def main():
-    game = get_scenario("scenarios/2x1.txt")
+    game = get_scenario("scenarios/4x4.txt")
+    strategy_profile = run_game(game)
+    simulate_game(game, strategy_profile)
+
+
+def run_game(game: game):
     with open("game.pml", "w") as f:
         f.write(game.get_promela())
 
+    subprocess.run(
+        ["spin", "-a", "game.pml"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+    )
+    subprocess.run(
+        [
+            "gcc",
+            "-DMEMLIM=8192",
+            "-O3",
+            "-DNOFAIR",
+            "-DNOCOMP",
+            "-DXUSAFE",
+            "-DVECTORSZ=4096",
+            "-DBITSTATE",
+            "-w",
+            "-o",
+            "pan",
+            "pan.c",
+        ],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    subprocess.run(
+        ["./pan", "-m10000", "-a", "-N", "-G4", "goal"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    result = subprocess.run(
+        [
+            "spin",
+            "-X",
+            "-n123",
+            "-l",
+            "-g",
+            "-k",
+            "game.pml.trail",
+            "-u10000",
+            "game.pml",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=5 * 60
+    )
+    output = result.stdout
+    # print("output is " + output)
+    strategies = {r.name: {} for r in game.robots}
+    for robot in strategies.keys():
+        strategies[robot]["moves"] = {}
+        strategies[robot]["moves_loaded"] = {}
+        strategies[robot]["score"] = 0
 
-if __name__ == '__main__':
+    move_regex = r"(\s*[a-zA-Z0-9.-]+)_(\w+)\[(\d+)\] = (-?\d+)"
+    for line in output.splitlines():
+        # print(line)
+        match = re.match(move_regex, line.strip())
+        if match:
+            robot, move_type, index, move = match.groups()
+            strategies[robot][move_type][int(index)] = int(move)
+        else:
+            match = re.match(r"([a-zA-Z0-9.-]+)_score = (\d+)", line.strip())
+            if match:
+                robot, score = match.groups()
+                strategies[robot]["score"] = int(score)
+
+
+
+    pprint(strategies)
+
+    subprocess.run(["rm", "-f", "pan*", "*.trail", "*.tmp"])
+    return strategies
+
+if __name__ == "__main__":
     main()

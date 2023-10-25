@@ -2,3 +2,4 @@
 *.trail
 pan
 pan.*
+.env/
