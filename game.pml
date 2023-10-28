@@ -1,5 +1,5 @@
-#define m 5
-#define n 5
+#define m 4
+#define n 4
 #define rounds 50
 
 chan a_chan = [0] of {int};
@@ -10,7 +10,7 @@ int a_x = 0;
 int a_y = 0;
 bool a_loaded = false;
 int a_load_x = 0;
-int a_load_y = 4;
+int a_load_y = 3;
 int a_drop_x = 0;
 int a_drop_y = 1;
 int a_score = 0;
@@ -22,10 +22,10 @@ int b_moves_loaded[m*n];
 int b_x = 2;
 int b_y = 2;
 bool b_loaded = false;
-int b_load_x = 3;
-int b_load_y = 3;
-int b_drop_x = 4;
-int b_drop_y = 4;
+int b_load_x = 1;
+int b_load_y = 2;
+int b_drop_x = 3;
+int b_drop_y = 3;
 int b_score = 0;
 
 chan c_chan = [0] of {int};
@@ -35,7 +35,7 @@ int c_moves_loaded[m*n];
 int c_x = 1;
 int c_y = 1;
 bool c_loaded = false;
-int c_load_x = 4;
+int c_load_x = 3;
 int c_load_y = 1;
 int c_drop_x = 2;
 int c_drop_y = 1;
@@ -310,5 +310,5 @@ run env()
 }
 ltl goal { 
 (<> ((a_x == b_x && a_y == b_y) || (a_x == c_x && a_y == c_y) || (b_x == c_x && b_y == c_y)))
-|| ([] ((a_score + b_score + c_score <= 11)))
+|| ([] ((a_score + b_score + c_score <= 26)))
 }

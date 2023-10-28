@@ -294,7 +294,7 @@ proctype env() {{
         total_score = 0
         strategy_profile = None
         try:
-            for _ in range(10):
+            for _ in range(3):
                 self.target_total_score = total_score # dont need plus one because we search for <=
                 strategy_profile = self.run()
                 total_score = sum([strategy_profile[r]["score"] for r in strategy_profile.keys()])
@@ -326,7 +326,7 @@ def get_scenario(file_name: str) -> game:
 
 
 def main():
-    game = get_scenario("scenarios/5x5.txt")
+    game = get_scenario("scenarios/4x4_hard.txt")
     strategy_profile = game.iterative_search()
     simulate_game(game, strategy_profile)
 
