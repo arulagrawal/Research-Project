@@ -1,4 +1,4 @@
-file = wg_env
+file = game
 
 comp:
 	spin -a ${file}.pml

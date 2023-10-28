@@ -1,5 +1,5 @@
-#define m 5
-#define n 5
+#define m 4
+#define n 4
 #define rounds 50
 
 chan a_chan = [0] of {int};
@@ -258,5 +258,5 @@ init {
 
 ltl goal { 
 (<> ((a_x == b_x && a_y == b_y)))
-|| ([] ((a_score <= 3) || (b_score <= 2)))}
+|| ([] ((a_score <= 0) || (b_score <= 0)))}
 // || ([] ((a_score + b_score <= 6)))}
