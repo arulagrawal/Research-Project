@@ -132,6 +132,7 @@ class game:
         self.num_robots = num_robots
         self.robots = []
         self.target_total_score = 0
+        self.rounds = 50
 
 
     def add_robot(self, robot: robot) -> None:
@@ -142,7 +143,7 @@ class game:
 
         result += f"#define m {self.m}\n"
         result += f"#define n {self.n}\n"
-        result += f"#define rounds 50\n\n"
+        result += f"#define rounds {self.rounds}\n\n"
 
         for robot in self.robots:
             result += robot.get_variables() + "\n"
@@ -294,7 +295,7 @@ proctype env() {{
         total_score = 0
         strategy_profile = None
         try:
-            for _ in range(3):
+            for _ in range(10):
                 self.target_total_score = total_score # dont need plus one because we search for <=
                 strategy_profile = self.run()
                 total_score = sum([strategy_profile[r]["score"] for r in strategy_profile.keys()])
@@ -326,7 +327,7 @@ def get_scenario(file_name: str) -> game:
 
 
 def main():
-    game = get_scenario("scenarios/4x4_hard.txt")
+    game = get_scenario("scenarios/2x1.txt")
     strategy_profile = game.iterative_search()
     simulate_game(game, strategy_profile)
 
