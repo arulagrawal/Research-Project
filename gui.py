@@ -14,9 +14,9 @@ def simulate_game(game, strategy_profile):
     robot_size = 90
 
     for i in range(m + 1):
-        canvas.create_line(i * cell_size, 0, i * cell_size, n * cell_size)
+        canvas.create_line(i * cell_size, 0, i * cell_size, n * cell_size, fill="black")
     for j in range(n):
-        canvas.create_line(0, j * cell_size, m * cell_size, j * cell_size)
+        canvas.create_line(0, j * cell_size, m * cell_size, j * cell_size, fill="black")
 
     colours = ["red", "green", "blue", "yellow", "orange", "purple", "pink", "brown"]
     sprites = []
@@ -51,6 +51,16 @@ def update_sprites(sprites, canvas):
     for sprite in sprites:
         sprite.draw_next(canvas)
         sprite.update_status(canvas)
+    
+    # check if any of the robots are on top of each other
+    for i, sprite in enumerate(sprites):
+        for j, other_sprite in enumerate(sprites):
+            if i != j and sprite.x == other_sprite.x and sprite.y == other_sprite.y:
+                print(f"!!!Collision!!!")
+                print(f"Robot {sprite.name} and Robot {other_sprite.name} are on the same cell")
+                print(f"Robot {sprite.name} is at {sprite.x}, {sprite.y}")
+                print(f"Robot {other_sprite.name} is at {other_sprite.x}, {other_sprite.y}")
+                return
 
 
 def draw_robot(canvas, x, y, color, robot_size, cell_size):

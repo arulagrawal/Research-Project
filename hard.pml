@@ -1,6 +1,6 @@
 #define m 4
 #define n 4
-#define rounds 50
+#define rounds 20
 
 chan a_chan = [0] of {int};
 chan a_can = [0] of {bool};
@@ -40,6 +40,8 @@ int c_load_y = 1;
 int c_drop_x = 2;
 int c_drop_y = 1;
 int c_score = 0;
+
+bool crash = false;
 
 
 proctype a() {
@@ -242,7 +244,7 @@ c_chan?c_move;
             a_score = a_score + 1;
         } :: else -> skip;
         fi
-        
+
 
         if :: (b_move == 0) -> {
             b_x = b_x - 1;
@@ -262,7 +264,7 @@ c_chan?c_move;
             b_score = b_score + 1;
         } :: else -> skip;
         fi
-        
+
 
         if :: (c_move == 0) -> {
             c_x = c_x - 1;
@@ -282,12 +284,12 @@ c_chan?c_move;
             c_score = c_score + 1;
         } :: else -> skip;
         fi
-        
 
+        crash = (a_x == b_x && a_y == b_y) || (a_x == c_x && a_y == c_y) || (b_x == c_x && b_y == c_y);
         }
     }
 }
-        
+
 init {
 int i = 0;
 for(i:0.. m*n-1) {
@@ -299,16 +301,16 @@ for(i:0.. m*n-1) {
 	c_moves_loaded[i] = -1;
 }
                 run a();
-        
+
 
                 run b();
-        
+
 
                 run c();
-        
+
 run env()
 }
-ltl goal { 
-(<> ((a_x == b_x && a_y == b_y) || (a_x == c_x && a_y == c_y) || (b_x == c_x && b_y == c_y)))
-|| ([] ((a_score + b_score + c_score <= 26)))
+ltl goal {
+(<> (crash == true))
+|| ([] ((b_score<= 0) || (c_score <= 0) || (a_score <= 0)))
 }
