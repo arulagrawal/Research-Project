@@ -293,16 +293,21 @@ proctype env() {{
     
     def iterative_search(self):
         total_score = 0
+        prev = None
         strategy_profile = None
         try:
             for _ in range(10):
                 self.target_total_score = total_score # dont need plus one because we search for <=
                 strategy_profile = self.run()
                 total_score = sum([strategy_profile[r]["score"] for r in strategy_profile.keys()])
+                if prev == total_score:
+                    break
+                prev = total_score
                 print(f"Total score improved to: {total_score}")
                 print("Individual scores:")
                 for robot in self.robots:
                     print(f"{robot.name}: {strategy_profile[robot.name]['score']}")
+
         except subprocess.TimeoutExpired:
             print("Time limit exceeded")
             return strategy_profile
