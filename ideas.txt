@@ -1,3 +1,1 @@
-1. Add score targeting / iterative improvement (leverage the timeout?)
-
-2. Add the ability to go back in the simulation
+1. Add the ability to go back in the simulation
