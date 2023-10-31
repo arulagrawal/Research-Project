@@ -7,15 +7,22 @@ def simulate_game(game, strategy_profile):
 
     m, n = game.m, game.n
     width = m * 100
-    height = n * 100
+    height = max(n * 100, 200)
     canvas = tk.Canvas(root, width=width + 200, height=height, bg="white")
     canvas.pack()
     cell_size = 100
     robot_size = 90
 
+    line_width = 4  # Width of the lines; adjust as needed
+
+    # Draw the top horizontal line
+    canvas.create_line(line_width / 2, line_width / 2, m * cell_size, line_width / 2, fill="black", width=line_width)
+
+    # Draw the left vertical line
+    canvas.create_line(line_width / 2, line_width / 2, line_width / 2, n * cell_size, fill="black", width=line_width)
     for i in range(m + 1):
         canvas.create_line(i * cell_size, 0, i * cell_size, n * cell_size, fill="black")
-    for j in range(n):
+    for j in range(n + 1):
         canvas.create_line(0, j * cell_size, m * cell_size, j * cell_size, fill="black")
 
     colours = ["red", "green", "blue", "yellow", "orange", "purple", "pink", "brown"]

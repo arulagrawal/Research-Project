@@ -1,9 +1,11 @@
 from itertools import combinations
+import argparse
 import re
 import subprocess
 from pprint import pprint
 
 from gui import simulate_game
+
 
 class robot:
     def __init__(
@@ -133,7 +135,10 @@ class game:
         self.robots = []
         self.target_total_score = 0
         self.rounds = 50
+        self.mode = "collective"
 
+    def set_mode(self, mode: str) -> None:
+        self.mode = mode
 
     def add_robot(self, robot: robot) -> None:
         self.robots.append(robot)
@@ -208,12 +213,17 @@ proctype env() {{
             ]
             return " || ".join(collision_boolean_thing)
 
-        # def get_score_ltl(names) -> str:  # TODO make score target a parameter
-        #     return " || ".join([f"({name}_score <= 0)" for name in names])
-        def get_score_ltl(names) -> str:
+        def get_score_ltl_fair(names) -> str:  # TODO make score target a parameter
+            return " || ".join([f"({name}_score <= 0)" for name in names])
+
+        def get_score_ltl_collective(names) -> str:
             score_sum = " + ".join(f"{name}_score" for name in names)
             return f"({score_sum} <= {self.target_total_score})"
 
+        if self.mode == "fair":
+            get_score_ltl = get_score_ltl_fair
+        else:
+            get_score_ltl = get_score_ltl_collective
 
         result += "ltl goal { \n"
         result += f"(<> ({get_collision_ltl(combinations(names, 2))}))\n"
@@ -221,13 +231,15 @@ proctype env() {{
         result += "\n}"
 
         return result
-    
+
     def run(self):
         with open("game.pml", "w") as f:
             f.write(self.get_promela())
 
         subprocess.run(
-            ["spin", "-a", "game.pml"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+            ["spin", "-a", "game.pml"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
         )
         subprocess.run(
             [
@@ -251,7 +263,7 @@ proctype env() {{
             ["./pan", "-m10000", "-a", "-N", "-G4", "goal"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
-            timeout=2 * 60
+            timeout=5 * 60,
         )
         result = subprocess.run(
             [
@@ -290,16 +302,24 @@ proctype env() {{
 
         subprocess.run(["rm", "-f", "pan*", "*.trail", "*.tmp"])
         return strategies
-    
+
     def iterative_search(self):
         total_score = 0
         prev = None
         strategy_profile = None
+        if self.mode == "fair":
+            iters = 1
+        else:
+            iters = 15
         try:
-            for _ in range(10):
-                self.target_total_score = total_score # dont need plus one because we search for <=
+            for _ in range(iters):
+                self.target_total_score = (
+                    total_score  # dont need plus one because we search for <=
+                )
                 strategy_profile = self.run()
-                total_score = sum([strategy_profile[r]["score"] for r in strategy_profile.keys()])
+                total_score = sum(
+                    [strategy_profile[r]["score"] for r in strategy_profile.keys()]
+                )
                 if prev == total_score:
                     break
                 prev = total_score
@@ -313,6 +333,7 @@ proctype env() {{
             return strategy_profile
 
         return strategy_profile
+
 
 def get_scenario(file_name: str) -> game:
     scenario: game = None
@@ -332,9 +353,29 @@ def get_scenario(file_name: str) -> game:
 
 
 def main():
-    game = get_scenario("scenarios/2x1.txt")
+    parser = argparse.ArgumentParser(description="Process a string and a mode.")
+
+    parser.add_argument("name", type=str, help="The name of the string")
+    parser.add_argument(
+        "mode",
+        type=str,
+        nargs="?",
+        default="collective",
+        const="collective",
+        choices=["fair", "collective"],
+        help="The mode of operation: fair or collective (default: collective)",
+    )
+
+    args = parser.parse_args()
+
+    string_name = args.name
+    mode = args.mode
+
+    game = get_scenario(f"scenarios/{string_name}.txt")
+    game.set_mode(mode)
     strategy_profile = game.iterative_search()
     simulate_game(game, strategy_profile)
+
 
 if __name__ == "__main__":
     main()
