@@ -2,7 +2,7 @@
 
 My research is based around strategy synthesis for multi-robot systems, specifically for the "warehouse game". 
 
-The report can be read [here]().
+The full report can be read [here](./Research-Report.pdf).
 
 ### Usage
 The project has no dependencies, but uses Tkinter for the GUI simulation tool. Tkinter is included with most standard Python installations, but if you run into errors on startup related to Tkinter - check that your environment is setup to use it.
